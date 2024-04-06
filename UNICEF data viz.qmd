@@ -1,0 +1,275 @@
+---
+title: "UNICEF Data Visualisations"
+subtitle: "Exploring Population and Life Expectancy Growth from 1960 to 2021"
+author: "Sean Hurley"
+date: 10-Apr-2024
+format: 
+  html:
+    theme: lux
+    toc: true
+    toc-title: Content Outline
+    fig-align: left
+  pdf: default
+editor: visual
+execute:
+  echo: false
+---
+
+
+
+```{r}
+#| label: Install Packages
+#| echo: false
+#| output: false
+if(!require("tidyverse")) install.packages("tidyverse", dependencies = TRUE)
+```
+
+```{r}
+#| label: Load Packages
+#| echo: false
+#| output: false
+library("tidyverse")
+library("ggplot2")
+```
+
+```{r}
+#| echo: false
+#| output: false
+getwd() # function to check the current working directory
+```
+
+```{r}
+#| echo: false
+#| output: false
+setwd("C:\\Users\\Star\\Documents\\my_data_files")# function to set the current working directory
+```
+
+```{r}
+#| label: Load Dataset
+#| echo: false
+#| output: false
+indicator_1 <- read.csv("unicef_indicator_1.csv")
+indicator_2 <- read.csv("unicef_indicator_2.csv")
+metadata <- read.csv("unicef_metadata.csv")
+
+```
+
+```{r}
+#| echo: false
+#| output: false
+new_colnames <- c("country", "Alpha_Code2","Alpha_Code3" ,"Numeric_Code", "ISO3C", "Year", 
+                  "Population_Total", "GDP_Constant_2015_USD", "GNI_Current_USD", 
+                  "Inflation", "Life_Expectancy_at_Birth",
+                  "Military_Expenditure_GDP_Perc")
+names(metadata) <- new_colnames
+```
+
+```{r}
+#| echo: false
+#| output: false
+colnames(metadata) # To check columns names
+```
+
+```{r}
+#| echo: false
+#| output: false
+view(metadata)
+```
+
+```{r}
+#| echo: false
+#| output: false
+# Remove rows with missing values
+cleaned_metadata <- na.omit(metadata)
+```
+
+```{r}
+#| echo: false
+#| output: false
+# Applying group by on data 
+grouped_data <- cleaned_metadata %>%
+  filter(Year == 2021) %>%
+  group_by(country)
+View(grouped_data)
+```
+
+## Bar Chart
+
+The bar chart showcases the highest populated countries ranked in the order of China, India, the US, Indonesia, and Pakistan for 2021. China leads with the highest population due to its extensive landmass and historically rapid growth. India closely follows, also benefiting from a large geographical area and sustained population expansion. The US ranks third, leveraging economic prosperity to support its significant population. Indonesia and Pakistan, with expansive territories, secure their positions among the top populous nations
+
+```{r}
+#| echo: false
+#| output: false
+# Summarize the maximum population for each country
+country_pop_summary <- summarise(grouped_data, max_population = max(Population_Total))
+```
+
+```{r}
+#| echo: false
+#| output: false
+# Sort the summary by maximum population in descending order
+country_pop_summary <- arrange(country_pop_summary, desc(max_population))
+```
+
+```{r}
+#| echo: false
+#| output: false
+# Select the top 5 countries
+top_5_countries <- head(country_pop_summary, 5)
+```
+
+```{r}
+#| echo: false
+#| output: true
+# Create a data frame from top_5_countries (assuming top_5_countries is a character vector)
+#top_5_countries_df <- data.frame(country = top_5_countries, max_population = top_5_countries)
+
+# Create a bar chart
+bar_chart <- ggplot(top_5_countries, aes(x = reorder(country, max_population), y = max_population)) +
+  geom_bar(stat = "identity", fill = c("green","#97DFFC","yellow","blue","#DECDF5")) +
+  labs(x = "Country", y = "Maximum Population", title = "Top 5 Countries by Maximum Population",
+       subtitle = "By year 2021") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+
+# Display the bar chart
+print(bar_chart)
+ 
+```
+
+## Time Series Plot
+
+The time series plot vividly captures the population dynamics of China, India, the US, Indonesia, and Brazil spanning from 1960 to 2021. Notably, China experienced a staggering increase from 667,070,000 to 1,412,175,000, showcasing remarkable growth over the period. This massive rise underscores the imperative for robust Universal Health Coverage (UHC) frameworks to address the healthcare needs of expanding populations, ensuring equitable access to quality healthcare services despite demographic disparities.
+
+```{r}
+#| echo: false
+#| output: false
+#  Include data from the past 10 years (2012-2021)
+filt_data <- cleaned_metadata %>%
+  filter(Year >= 1960 & Year <= 2021)
+
+```
+
+```{r}
+#| echo: false
+#| output: false
+# Group the data by country and summarize the population data for each year
+grouped_data_TS <- filt_data %>%
+  group_by(country, Year, .groups = "drop") %>%
+  summarise(mean_population = mean(Population_Total))
+```
+
+```{r}
+#| echo: false
+#| output: false
+
+top_5_countries <- grouped_data_TS %>%
+  group_by(country) %>%
+  summarise(avg_population = mean(mean_population)) %>%
+  top_n(5, avg_population) %>%
+  arrange(desc(avg_population)) %>%
+  pull(country)
+
+```
+
+```{r}
+#| echo: false
+#| output: false
+# Filter the grouped data to include only the top 5 countries
+top_5_data <- grouped_data_TS %>%
+  filter(country %in% top_5_countries)
+```
+
+```{r}
+#| echo: false
+#| output: false
+#  Plot the time series for each of the top 5 countries
+time_series_plot <- ggplot(top_5_data, aes(x = Year, y = mean_population, group = country, color = country)) +
+  geom_line() +
+  labs(x = "Year", y = "Mean Population", title = "Population Changes of Top 5 Countries (1960-2021)") +
+  theme_minimal() +
+  theme(legend.position = "right")  # To set Position of legend
+
+```
+
+```{r}
+#| echo: false
+#| output: true
+# Display the time series plot
+print(time_series_plot)
+```
+
+## Scatter plot with regression line:
+
+The scatter plot depicts the relationship between life expectancy and population for Afghanistan, Albania, Algeria, Norway, and Pakistan, with life expectancy on the x-axis and population on the y-axis. Notably, Algeria's regression line appears steeper compared to Norway, suggesting a more pronounced positive impact on health systems and education in Algeria, leading to accelerated improvements in both life expectancy and population growth.
+
+```{r}
+#| echo: false
+#| output: false
+# Filter the data for countries "Afghanistan" ,"Norway" and "Pakistan"
+filtered_metadata <- cleaned_metadata[cleaned_metadata$country %in% 
+                                        c("Afghanistan", "Norway","Pakistan",
+                                                                "Albania","Algeria",
+                                                                      "Norway"), ]
+```
+
+```{r}
+#| echo: false
+#| output: false
+# scatter plot with linear regression line
+scatter_plot <- ggplot(filtered_metadata , aes(x = Year, y = Life_Expectancy_at_Birth, color = country)) +
+  geom_point( size = 3, alpha = 0.5) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +  # linear regression line
+  labs(title = "Scatter Plot of Population vs. Life Expectancy",
+       x = "Population",
+       y = "Life Expectancy at Birth (Total Years)") +
+  theme_minimal()
+
+```
+
+```{r}
+#| echo: false
+#| output: true
+# Display the scatter plot
+print(scatter_plot)
+```
+
+## World Map: Country Population for 2021
+
+The world map illustrates population density across countries, with darker shades representing higher densities. This highlights areas where access to Universal Health Coverage (UHC) may be crucial due to concentrated populations. Factors such as job opportunities, living conditions, and government policies influencing density also impact the need for equitable healthcare provision. Understanding population density aids in planning UHC services effectively, ensuring all residents have access to essential healthcare regardless of population concentration.
+
+```{r}
+#| echo: false
+#| output: false
+# Load world map data
+world_map <- map_data("world")
+
+map_data <- grouped_data %>%
+  left_join(world_map, by = c("country" = "region"), relationship = "many-to-many")
+
+```
+
+```{r}
+#| echo: false
+#| output: false
+# Checking how the world map looks like
+worldlayout <- ggplot() + 
+  geom_polygon(data = world_map, aes(long, lat, group = group), fill = NA, color = 'grey') + 
+  coord_fixed(1.3) + 
+  theme_bw()
+
+worldlayout
+```
+
+```{r}
+#| echo: false
+#| output: true
+# Creating World Map  combined
+map_Plot <- worldlayout + 
+  geom_polygon(data = map_data, aes(x = long, y = lat, group = group, fill = Population_Total)) +
+  scale_fill_viridis_b()+
+  labs(title = "Country Population for 2021 ",
+       x= "Logitude",
+       y="Latitude")
+
+map_Plot
+```
